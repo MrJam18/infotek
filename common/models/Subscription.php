@@ -20,7 +20,6 @@ use yii\db\ActiveRecord;
  * @property int $author_id
  * @property int $created_at
  * @property-read Guest $guest
- * @property-read Author $author
  * @property-read Book $book
  */
 class Subscription extends ActiveRecord
@@ -43,25 +42,9 @@ class Subscription extends ActiveRecord
         return '{{%subscription}}';
     }
 
-    public function rules(): array
-    {
-        return [
-            [['guest_id', 'author_id'], 'required'],
-            [['guest_id', 'author_id'], 'integer'],
-            [['guest_id'], 'exist', 'targetClass' => Guest::class, 'targetAttribute' => 'id', 'skipOnError' => true],
-            [['author_id'], 'exist', 'targetClass' => Author::class, 'targetAttribute' => 'id', 'skipOnError' => true],
-            [['guest_id', 'author_id'], 'unique', 'targetAttribute' => ['guest_id', 'author_id']],
-        ];
-    }
-
     public function getGuest(): ActiveQuery
     {
         return $this->hasOne(Guest::class, ['id' => 'guest_id']);
-    }
-
-    public function getAuthor(): ActiveQuery
-    {
-        return $this->hasOne(Author::class, ['id' => 'author_id']);
     }
 
     public function getBook(): ActiveQuery
