@@ -6,7 +6,7 @@ namespace frontend\tests\Unit\Models;
 
 use Codeception\Test\Unit;
 use common\fixtures\UserFixture;
-use frontend\models\ResetPasswordForm;
+use frontend\models\forms\ResetPasswordForm;
 use frontend\tests\Support\UnitTester;
 use yii\base\InvalidArgumentException;
 

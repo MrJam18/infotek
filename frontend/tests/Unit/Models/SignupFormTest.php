@@ -7,7 +7,7 @@ namespace frontend\tests\Unit\Models;
 use Codeception\Test\Unit;
 use common\fixtures\UserFixture;
 use common\models\User;
-use frontend\models\SignupForm;
+use frontend\models\forms\SignupForm;
 use frontend\tests\Support\UnitTester;
 use Yii;
 use yii\mail\MessageInterface;

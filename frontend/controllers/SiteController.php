@@ -4,93 +4,89 @@ declare(strict_types=1);
 
 namespace frontend\controllers;
 
+use common\models\Author;
+use common\models\Book;
+use common\models\Guest;
 use common\models\LoginForm;
-use frontend\models\ContactForm;
-use frontend\models\PasswordResetRequestForm;
-use frontend\models\ResendVerificationEmailForm;
-use frontend\models\ResetPasswordForm;
+use frontend\components\FrontendController;
+use frontend\models\search\BookSearch;
+use frontend\models\forms\SubscriptionForm;
 use frontend\models\SignupForm;
 use frontend\models\VerifyEmailForm;
+use InvalidArgumentException;
 use Yii;
-use yii\base\InvalidArgumentException;
-use yii\captcha\CaptchaAction;
 use yii\filters\AccessControl;
-use yii\filters\VerbFilter;
 use yii\mail\MailerInterface;
 use yii\web\BadRequestHttpException;
-use yii\web\Controller;
-use yii\web\ErrorAction;
 use yii\web\Response;
 
 /**
- * Site controller
+ * Actions for anonymous guests: browsing books and subscribing to authors.
  */
-class SiteController extends Controller
+class SiteController extends FrontendController
 {
+
+    private MailerInterface $mailer;
+
     public function __construct(
         $id,
         $module,
-        private readonly MailerInterface $mailer,
+        MailerInterface $mailer,
         $config = [],
     ) {
+        $this->mailer = $mailer;
         parent::__construct($id, $module, $config);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function behaviors(): array
     {
         return [
             'access' => [
                 'class' => AccessControl::class,
-                'only' => ['logout', 'signup'],
                 'rules' => [
                     [
-                        'actions' => ['signup'],
                         'allow' => true,
                         'roles' => ['?'],
                     ],
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
-                ],
-            ],
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'logout' => ['post'],
                 ],
             ],
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function actions(): array
-    {
-        return [
-            'error' => [
-                'class' => ErrorAction::class,
-            ],
-            'captcha' => [
-                'class' => CaptchaAction::class,
-                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
-            ],
-        ];
-    }
-
-    /**
-     * Displays homepage.
-     *
-     * @return string
-     */
     public function actionIndex(): string
     {
-        return $this->render('index');
+        $searchModel = new BookSearch();
+        $dataProvider = $searchModel->search();
+
+        return $this->render('index', [
+            'dataProvider' => $dataProvider,
+            'searchModel' => $searchModel,
+        ]);
+    }
+
+    public function actionSubscribe(int $id): string|Response
+    {
+        $author = Author::findOne($id);
+        $guest = Guest::getCurrent();
+
+        $model = new SubscriptionForm([
+            'author' => $author,
+            'guest' => $guest
+        ]);
+        if ($model->isAlreadySubscribed()) {
+            $this->addAlert( 'Вы уже подписаны на этого автора.');
+            return $this->redirectBack();
+        }
+        // If the guest already has a phone, subscribe immediately.
+        if ($model->validate() && $model->save()) {
+            $this->addAlert('Вы подписаны на новые книги автора.');
+            return $this->redirectBack(['index']);
+        }
+        // Else go to modal to get phone
+        return $this->render('subscribe', [
+            'author' => $author,
+            'model' => $model,
+        ]);
     }
 
     /**
@@ -117,73 +113,15 @@ class SiteController extends Controller
         ]);
     }
 
-    /**
-     * Logs out the current user.
-     *
-     * @return Response
-     */
-    public function actionLogout(): Response
-    {
-        Yii::$app->user->logout();
-
-        return $this->goHome();
-    }
-
-    /**
-     * Displays contact page.
-     *
-     * @return string|Response
-     */
-    public function actionContact(): string|Response
-    {
-        $model = new ContactForm();
-
-        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            $sent = $model->sendEmail(
-                $this->mailer,
-                Yii::$app->params['adminEmail'],
-                Yii::$app->params['senderEmail'],
-                Yii::$app->params['senderName'],
-            );
-
-            if ($sent) {
-                Yii::$app->session->setFlash('success', 'Thank you for contacting us. We will respond to you as soon as possible.');
-            } else {
-                Yii::$app->session->setFlash('error', 'There was an error sending your message.');
-            }
-
-            return $this->refresh();
-        }
-
-        return $this->render('contact', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Displays about page.
-     *
-     * @return string
-     */
-    public function actionAbout(): string
-    {
-        return $this->render('about');
-    }
-
-    /**
-     * Signs user up.
-     *
-     * @return string|Response
-     */
     public function actionSignup(): string|Response
     {
         $model = new SignupForm();
 
         $signed = $model->load(Yii::$app->request->post()) && $model->signup(
-            $this->mailer,
-            Yii::$app->params['supportEmail'],
-            Yii::$app->name,
-        );
+                $this->mailer,
+                Yii::$app->params['supportEmail'],
+                Yii::$app->name,
+            );
 
         if ($signed) {
             Yii::$app->session->setFlash('success', 'Thank you for registration. Please check your inbox for verification email.');
@@ -191,62 +129,6 @@ class SiteController extends Controller
         }
 
         return $this->render('signup', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Requests password reset.
-     *
-     * @return string|Response
-     */
-    public function actionRequestPasswordReset(): string|Response
-    {
-        $model = new PasswordResetRequestForm();
-
-        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            $sent = $model->sendEmail(
-                $this->mailer,
-                Yii::$app->params['supportEmail'],
-                Yii::$app->name,
-            );
-
-            if ($sent) {
-                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
-
-                return $this->goHome();
-            }
-
-            Yii::$app->session->setFlash('error', 'Sorry, we are unable to reset password for the provided email address.');
-        }
-
-        return $this->render('requestPasswordResetToken', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Resets password.
-     *
-     * @param string $token
-     * @return string|Response
-     * @throws BadRequestHttpException
-     */
-    public function actionResetPassword(string $token): string|Response
-    {
-        try {
-            $model = new ResetPasswordForm($token);
-        } catch (InvalidArgumentException $e) {
-            throw new BadRequestHttpException($e->getMessage());
-        }
-
-        if ($model->load(Yii::$app->request->post()) && $model->validate() && $model->resetPassword()) {
-            Yii::$app->session->setFlash('success', 'New password saved.');
-
-            return $this->goHome();
-        }
-
-        return $this->render('resetPassword', [
             'model' => $model,
         ]);
     }
@@ -273,34 +155,5 @@ class SiteController extends Controller
 
         Yii::$app->session->setFlash('error', 'Sorry, we are unable to verify your account with provided token.');
         return $this->goHome();
-    }
-
-    /**
-     * Resend verification email
-     *
-     * @return string|Response
-     */
-    public function actionResendVerificationEmail(): string|Response
-    {
-        $model = new ResendVerificationEmailForm();
-
-        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            $sent = $model->sendEmail(
-                $this->mailer,
-                Yii::$app->params['supportEmail'],
-                Yii::$app->name,
-            );
-
-            if ($sent) {
-                Yii::$app->session->setFlash('success', 'Check your email for further instructions.');
-                return $this->goHome();
-            }
-
-            Yii::$app->session->setFlash('error', 'Sorry, we are unable to resend verification email for the provided email address.');
-        }
-
-        return $this->render('resendVerificationEmail', [
-            'model' => $model,
-        ]);
     }
 }

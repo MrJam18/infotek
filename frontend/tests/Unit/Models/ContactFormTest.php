@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace frontend\tests\Unit\Models;
 
 use Codeception\Test\Unit;
-use frontend\models\ContactForm;
+use frontend\models\forms\ContactForm;
 use frontend\tests\Support\UnitTester;
 use Yii;
 use yii\mail\MessageInterface;

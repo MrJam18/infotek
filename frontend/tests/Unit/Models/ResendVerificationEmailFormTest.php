@@ -6,7 +6,7 @@ namespace frontend\tests\Unit\Models;
 
 use Codeception\Test\Unit;
 use common\fixtures\UserFixture;
-use frontend\models\ResendVerificationEmailForm;
+use frontend\models\forms\ResendVerificationEmailForm;
 use frontend\tests\Support\UnitTester;
 use Yii;
 use yii\mail\MessageInterface;

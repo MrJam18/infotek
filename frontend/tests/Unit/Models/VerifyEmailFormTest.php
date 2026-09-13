@@ -7,7 +7,7 @@ namespace frontend\tests\Unit\Models;
 use Codeception\Test\Unit;
 use common\fixtures\UserFixture;
 use common\models\User;
-use frontend\models\VerifyEmailForm;
+use frontend\models\forms\VerifyEmailForm;
 use frontend\tests\Support\UnitTester;
 use yii\base\InvalidArgumentException;
 
