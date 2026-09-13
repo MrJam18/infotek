@@ -57,4 +57,18 @@ class BookForm extends Book
         }
         $this->uploadFile();
     }
+
+    protected function uploadFile(): bool
+    {
+        if (!isset($this->photoFile)) {
+            return false;
+        }
+        $fileName = $this->photoFile->baseName . '.' . $this->photoFile->extension;
+        $path = $this->getFilePath($fileName);
+        $ret = $this->photoFile->saveAs($path);
+        if ($ret) {
+            $this->photo = $fileName;
+        }
+        return $ret;
+    }
 }
