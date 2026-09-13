@@ -126,6 +126,9 @@ class Book extends ActiveRecord
 
     protected function deleteCurrentFile(): bool
     {
+        if (!$this->id || !$this->photo) {
+            return false;
+        }
         return unlink($this->getFilePath($this->photo));
     }
 }
