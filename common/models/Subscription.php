@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace common\models;
 
-use common\events\BookCreatedEvent;
 use console\jobs\NotifyBookSubscribersJob;
 use Yii;
 use yii\base\Event;
