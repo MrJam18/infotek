@@ -3,7 +3,6 @@
 return [
     'bootstrap' => [
         \common\bootstrap\MailerBootstrap::class,
-        \common\bootstrap\NotificationBootstrap::class,
     ],
     'aliases' => [
         '@bower' => '@vendor/bower-asset',

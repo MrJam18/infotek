@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace common\models;
 
+use console\jobs\NotifyBookSubscribersJob;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
@@ -80,7 +81,9 @@ class Book extends ActiveRecord
     {
         parent::afterSave($insert, $changedAttributes);
         if ($insert) {
-            $this->trigger(self::EVENT_CREATED);
+            Yii::$app->queue->push(new NotifyBookSubscribersJob([
+                'bookId' => $this->id,
+            ]));
         }
         $authors = ArrayHelper::getColumn($this->authors, ['id']);
         $containsAll = $authors && empty(array_diff($authors, $this->authorsUpdated));

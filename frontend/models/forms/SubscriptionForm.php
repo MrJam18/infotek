@@ -44,6 +44,9 @@ class SubscriptionForm extends Model
         $guest = $this->guest;
 
         if ($guest->phone === null) {
+            if ($this->phone === null) {
+                return false;
+            }
             $guest->phone = $this->normalizePhone();
             if (!$guest->save()) {
                 $this->addErrors($guest->getErrors());
