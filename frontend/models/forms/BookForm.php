@@ -23,7 +23,7 @@ class BookForm extends Book
     public function beforeValidate(): bool
     {
         $this->photoFile = UploadedFile::getInstance($this, 'photoFile');
-        if (!$this->uploadFile()) {
+        if (!$this->photoFile) {
             return false;
         }
         return parent::beforeValidate();
@@ -49,5 +49,12 @@ class BookForm extends Book
         return true;
     }
 
-
+    public function afterSave($insert, $changedAttributes): void
+    {
+        parent::afterSave($insert, $changedAttributes);
+        if (!$insert) {
+            $this->deleteCurrentFile();
+        }
+        $this->uploadFile();
+    }
 }

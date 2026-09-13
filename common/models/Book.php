@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace common\models;
 
+use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
@@ -24,7 +25,6 @@ use yii\web\UploadedFile;
  */
 class Book extends ActiveRecord
 {
-
     /**
      * Event raised after a new book is saved and its authors are synchronized.
      */
@@ -80,7 +80,7 @@ class Book extends ActiveRecord
     {
         parent::afterSave($insert, $changedAttributes);
         if ($insert) {
-            $this->trigger(self::EVENT_CREATED,);
+            $this->trigger(self::EVENT_CREATED);
         }
         $authors = ArrayHelper::getColumn($this->authors, ['id']);
         $containsAll = $authors && empty(array_diff($authors, $this->authorsUpdated));
@@ -97,16 +97,35 @@ class Book extends ActiveRecord
         }
     }
 
+    public function afterDelete()
+    {
+        $this->deleteCurrentFile();
+    }
+
     protected function uploadFile(): bool
     {
         if (!isset($this->photoFile)) {
             return false;
         }
         $fileName = $this->photoFile->baseName . '.' . $this->photoFile->extension;
-        $ret = $this->photoFile->saveAs('uploads/' . $this->photoFile->baseName . '.' . $this->photoFile->extension);
+        $path = $this->getFilePath($fileName);
+        $ret = $this->photoFile->saveAs($path);
         if ($ret) {
             $this->photo = $fileName;
         }
         return $ret;
+    }
+
+    protected function getFilePath(string $fileName): ?string
+    {
+        if (!$this->id) {
+            return null;
+        }
+        return Yii::getAlias('@app') . '/uploads/' . $this->id . '/' . $fileName;
+    }
+
+    protected function deleteCurrentFile(): bool
+    {
+        return unlink($this->getFilePath($this->photo));
     }
 }
