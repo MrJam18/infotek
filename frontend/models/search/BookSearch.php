@@ -26,7 +26,7 @@ class BookSearch extends Model implements SearchInterface
 
     public function search(): BaseDataProvider
     {
-        $query = Book::find()->joinWith('authors')
+        $query = Book::find()->with('authors')
             ->andFilterWhere([
                 'author_id' => $this->author_id,
                 'user_id' => $this->user_id,

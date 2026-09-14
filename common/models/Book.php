@@ -55,6 +55,7 @@ class Book extends ActiveRecord
             [['isbn'], 'string', 'max' => 13],
             [['description'], 'string'],
             [['photo'], 'string', 'max' => 255],
+            [['authorsUpdated'], 'authorsUpdatedValidator'],
         ];
     }
 
@@ -65,11 +66,20 @@ class Book extends ActiveRecord
             'year' => 'Год выпуска',
             'isbn' => 'ISBN',
             'description' => 'Описание',
-            'photo' => 'Фото обложки'
+            'photo' => 'Фото обложки',
+            'authorsUpdated' => 'Авторы'
         ];
     }
 
-
+    public function authorsUpdatedValidator(): void
+    {
+        $authorsExists = Author::findAll([
+            'id' => $this->authorsUpdated
+        ]);
+        if (count($authorsExists) > count($this->authorsUpdated)) {
+            $this->addError('authorsUpdated', 'Авторы не существуют');
+        }
+    }
 
     public function getAuthors(): ActiveQuery
     {
@@ -85,19 +95,7 @@ class Book extends ActiveRecord
                 'bookId' => $this->id,
             ]));
         }
-        $authors = ArrayHelper::getColumn($this->authors, ['id']);
-        $containsAll = $authors && empty(array_diff($authors, $this->authorsUpdated));
-        if (!$containsAll) {
-            BookAuthor::deleteAll(['book_id' => $this->id]);
-            $insert = [];
-            foreach ($this->authorsUpdated as $author) {
-                $insert[] = [
-                    $this->id,
-                    $author,
-                ];
-            }
-            \Yii::$app->db->createCommand()->batchInsert('book_author', ['book_id', 'author_id'], $insert)->execute();
-        }
+        $this->updateAuthorLinks();
     }
 
     public function afterDelete()
@@ -119,5 +117,37 @@ class Book extends ActiveRecord
             return false;
         }
         return unlink($this->getFilePath($this->photo));
+    }
+
+    protected function updateAuthorLinks(): void
+    {
+        $authors = ArrayHelper::getColumn($this->authors, ['id']);
+        $diff = array_diff($authors, $this->authorsUpdated);
+        if ($diff) {
+            $delete = [];
+            $insert = [];
+            foreach ($authors as $author) {
+                if (!in_array($author, $this->authorsUpdated)) {
+                    $delete[] = $author;
+                }
+            }
+            foreach ($diff as $author) {
+                $insert[] = [
+                    $this->id,
+                    $author
+                ];
+            }
+            Yii::$app->db->transaction(function () use ($delete, $insert) {
+                if ($delete) {
+                    BookAuthor::deleteAll([
+                        'book_id' => $this->id,
+                        'author_id' => $delete
+                    ]);
+                }
+                if ($insert) {
+                    \Yii::$app->db->createCommand()->batchInsert('book_author', ['book_id', 'author_id'], $insert)->execute();
+                }
+            });
+        }
     }
 }
